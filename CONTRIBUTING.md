@@ -57,6 +57,8 @@ docs: update README with usage example
 chore: update CI configuration
 ```
 
+If a commit contains breaking changes, mark it in the commit message (for example, add `!` after the type like `feat!:` or include a `BREAKING CHANGE:` footer).
+
 Keeping commits well-structured makes the review process easier and helps maintain a clear and understandable project history.
 
 ## 4. Open a Pull Request
@@ -80,4 +82,17 @@ Example:
 Close #42 This ensures the pull request is properly connected to the corresponding task and keeps the project workflow organized.
 ```
 
-# Breaking change
+# How to make breaking changes
+
+Changes that affect how the service is started are considered breaking, especially for Docker users relying on CLI args or environment variables.
+Breaking changes include (but are not limited to):
+
+- renaming, removing, or adding required CLI flags (`--api-url`, `--token`, `--timeout`)
+- renaming, removing, or adding required env vars (`API_URL`, `API_TOKEN`, `TIMEOUT`)
+- changing which values are required vs optional
+- changing default values (for example, the default timeout)
+- changing the expected type or format of a value (for example, `TIMEOUT` from seconds to milliseconds)
+- changing precedence between CLI and env values
+- changing validation/error behavior in a way that makes previously valid configs fail
+
+If you need to make a breaking change, call it out clearly in the PR description and update README usage examples accordingly.
