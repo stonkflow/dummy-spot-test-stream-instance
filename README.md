@@ -27,6 +27,16 @@
 
 Проверка обратных зависимостей выполняется тестом `architecture_layers_test.go`.
 
+### Package-level правила
+
+Правила структурирования пакетов:
+
+1. Один пакет = один use-case или одна инфраструктурная подсистема.
+2. Нельзя смешивать в одном пакете transport/wiring/business-логику.
+3. Каждый production-пакет в `internal/` обязан иметь `doc.go` с коротким описанием назначения.
+
+Проверка наличия и формата `doc.go` выполняется тестом `package_docs_test.go`.
+
 ### Runtime pipeline
 
 Каждый pipeline состоит из:
@@ -73,13 +83,18 @@ Middleware подключаются декларативно через `usecase
 
 ### Структура пакетов
 
-1. `internal/app` - lifecycle и orchestration runtime
-2. `internal/usecase` - pipeline контракты и middleware-механизм
-3. `internal/usecase/middleware` - recover/logging/metrics/retry/dlq
-4. `internal/domain` - типизированные сущности (`SubscriptionCommand`, `TradeEvent`, `DepthEvent`, `Payload`)
-5. `internal/codec` - сериализация/десериализация
-6. `internal/transport` - WS/Kafka адаптеры pipeline
-7. `internal/adapters/noop` - заглушки инфраструктуры для локального каркаса
+1. `internal/app` - runtime/lifecycle оркестрация pipeline-ов
+2. `internal/domain` - типизированные доменные сущности и payload-модели
+3. `internal/usecase` - pipeline-контракты и механика выполнения
+4. `internal/usecase/handlers` - бизнес-хендлеры (например, `OrderBookHandler`)
+5. `internal/usecase/middleware` - recover/logging/metrics/retry/dlq
+6. `internal/usecase/ports` - интерфейсы портов для use-case слоя
+7. `internal/codec/proto` - Kafka-side codecs (decode command / encode event)
+8. `internal/codec/wsjson` - Binance WS JSON codecs (encode command / decode event)
+9. `internal/transport/kafka` - Kafka transport-адаптация для pipeline
+10. `internal/transport/ws` - WebSocket transport-адаптация для pipeline
+11. `internal/adapters/inmemory` - in-memory инфраструктурные реализации (`OrderBookRepository`)
+12. `internal/adapters/noop` - no-op реализации для bootstrap/testing
 
 ### Конфигурация процесса
 
