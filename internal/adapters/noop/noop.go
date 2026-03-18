@@ -1,6 +1,10 @@
 package noop
 
-import "context"
+import (
+	"context"
+
+	"dummy-spot-test-stream-instance/internal/domain"
+)
 
 type CommandConsumer struct{}
 
@@ -50,14 +54,18 @@ func (c *WSClient) Close() error {
 	return nil
 }
 
-type OrderBookStore struct{}
+type OrderBookRepository struct{}
 
-func NewOrderBookStore() *OrderBookStore {
-	return &OrderBookStore{}
+func NewOrderBookRepository() *OrderBookRepository {
+	return &OrderBookRepository{}
 }
 
-func (s *OrderBookStore) Remove(string) {}
+func (s *OrderBookRepository) UpsertDepth(_ context.Context, depth domain.DepthEvent) (domain.DepthEvent, error) {
+	return depth, nil
+}
 
-func (s *OrderBookStore) Close() error {
+func (s *OrderBookRepository) Remove(_ context.Context, _ string) error { return nil }
+
+func (s *OrderBookRepository) Close() error {
 	return nil
 }

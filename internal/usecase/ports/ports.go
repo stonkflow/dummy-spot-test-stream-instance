@@ -1,6 +1,10 @@
 package ports
 
-import "context"
+import (
+	"context"
+
+	"dummy-spot-test-stream-instance/internal/domain"
+)
 
 type CommandConsumer interface {
 	Receive(ctx context.Context) ([]byte, error)
@@ -18,7 +22,8 @@ type WSClient interface {
 	Close() error
 }
 
-type OrderBookStore interface {
-	Remove(symbol string)
+type OrderBookRepository interface {
+	UpsertDepth(ctx context.Context, depth domain.DepthEvent) (domain.DepthEvent, error)
+	Remove(ctx context.Context, symbol string) error
 	Close() error
 }

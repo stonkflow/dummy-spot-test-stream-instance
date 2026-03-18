@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"dummy-spot-test-stream-instance/internal/adapters/inmemory"
 	"dummy-spot-test-stream-instance/internal/adapters/noop"
 	"dummy-spot-test-stream-instance/internal/app"
 	codecproto "dummy-spot-test-stream-instance/internal/codec/proto"
@@ -18,6 +19,7 @@ import (
 	"dummy-spot-test-stream-instance/internal/transport/kafka"
 	"dummy-spot-test-stream-instance/internal/transport/ws"
 	"dummy-spot-test-stream-instance/internal/usecase"
+	"dummy-spot-test-stream-instance/internal/usecase/handlers"
 	usecasemw "dummy-spot-test-stream-instance/internal/usecase/middleware"
 	"dummy-spot-test-stream-instance/internal/usecase/ports"
 
@@ -42,7 +44,7 @@ func main() {
 	consumer := noop.NewCommandConsumer()
 	producer := noop.NewEventProducer()
 	wsClient := noop.NewWSClient()
-	orderBook := noop.NewOrderBookStore()
+	orderBookRepository := inmemory.NewOrderBookRepository()
 	metricsCollector := noop.NewMetricsCollector()
 	dlqWriter := noop.NewDLQWriter()
 
@@ -55,8 +57,8 @@ func main() {
 	)
 
 	svc := app.NewService(
-		buildPipelines(consumer, producer, wsClient, logger, metricsCollector, dlqWriter),
-		buildClosers(consumer, producer, wsClient, orderBook),
+		buildPipelines(consumer, producer, wsClient, orderBookRepository, logger, metricsCollector, dlqWriter),
+		buildClosers(consumer, producer, wsClient, orderBookRepository),
 		logger,
 		app.WithServiceName("dummy-spot-gateway"),
 	)
@@ -131,6 +133,7 @@ func buildPipelines(
 	consumer ports.CommandConsumer,
 	producer ports.EventProducer,
 	wsClient ports.WSClient,
+	orderBookRepository ports.OrderBookRepository,
 	logger *slog.Logger,
 	metrics usecasemw.MetricsCollector,
 	dlq usecasemw.DLQWriter,
@@ -139,6 +142,7 @@ func buildPipelines(
 	eventEncoder := codecproto.NewEventEncoder()
 	wsCommandEncoder := wsjson.NewCommandEncoder()
 	wsEventDecoder := wsjson.NewEventDecoder()
+	orderBookHandler := handlers.NewOrderBookHandler(orderBookRepository)
 
 	kafkaToWSName := "kafka-command->ws"
 	wsToKafkaName := "ws-event->kafka"
@@ -147,6 +151,7 @@ func buildPipelines(
 		usecase.NewPipeline(
 			kafkaToWSName,
 			kafka.Source(consumer),
+			orderBookHandler,
 			ws.SendHandler(wsClient, wsCommandEncoder),
 		).With(
 			usecase.WithDecoder(usecase.DecodeWith(commandDecoder)),
@@ -164,6 +169,7 @@ func buildPipelines(
 		usecase.NewPipeline(
 			wsToKafkaName,
 			ws.Source(wsClient),
+			orderBookHandler,
 			kafka.ProduceHandler(producer, nil, eventEncoder),
 		).With(
 			usecase.WithDecoder(usecase.DecodeWith(wsEventDecoder)),
@@ -185,12 +191,12 @@ func buildClosers(
 	consumer ports.CommandConsumer,
 	producer ports.EventProducer,
 	wsClient ports.WSClient,
-	orderBook ports.OrderBookStore,
+	orderBookRepository ports.OrderBookRepository,
 ) []app.NamedCloser {
 	return []app.NamedCloser{
 		{Name: "command consumer", Close: consumer.Close},
 		{Name: "event producer", Close: producer.Close},
 		{Name: "websocket client", Close: wsClient.Close},
-		{Name: "order book store", Close: orderBook.Close},
+		{Name: "order book repository", Close: orderBookRepository.Close},
 	}
 }
